@@ -39,9 +39,9 @@ static uint8_t const FromAttribute = 0x34;
 static uint8_t const ToAttribute = 0x35;
 
 static int const TRI_ERROR_NO_ERROR = 0;
-static int const TRI_ERROR_BAD_PARAMETER = 0;
-static int const TRI_ERROR_OUT_OF_MEMORY = 0;
-static int const TRI_ERROR_NOT_IMPLEMENTED = 0;
+static int const TRI_ERROR_BAD_PARAMETER = 2;
+static int const TRI_ERROR_OUT_OF_MEMORY = 4;
+static int const TRI_ERROR_NOT_IMPLEMENTED = 8;
 static int const MaxLevels = 64;
 
 #define TRI_V8_ASCII_PAIR_STRING(name, length) \
@@ -79,6 +79,7 @@ static v8::Local<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
                                                VPackSlice const& slice,
                                                VPackOptions const* options,
                                                VPackSlice const* base) {
+
   assert(slice.isObject());
   v8::Local<v8::Object> object = v8::Object::New();
 
@@ -516,6 +517,8 @@ int TRI_V8ToVPackSimple(v8::Isolate* isolate,
   BuilderContext context(isolate, builder, false);
   return V8ToVPack<false, false>(context, value, arangodb::StringRef());
 }
+
+
 //NAN_METHOD(Collection::New) {
 //  if (info.IsConstructCall()) {
 //    if (info.Length() !=2 ) {
@@ -551,8 +554,51 @@ int TRI_V8ToVPackSimple(v8::Isolate* isolate,
 //  );
 //}
 
-NAN_MODULE_INIT(InitAll){
 
+NAN_METHOD(decode) {
+
+    // Check the number of arguments passed.
+    if (info.Length() < 1) {
+        // Throw an Error that is passed back to JavaScript
+        //info.GetIsolate()->ThrowException(Exception::TypeError(
+///
+  //                  String::NewFromUtf8(isolate, "Wrong number of arguments")));
+        return;
+    }
+
+    char* buf = ::node::Buffer::Data(info[0]);
+    VPackSlice slice(buf);
+    info.GetReturnValue().Set(TRI_VPackToV8(info.GetIsolate(), &velocypack::Options::Defaults,  slice));
+
+}
+
+NAN_METHOD(encode) {
+    // Check the number of arguments passed.
+    if (info.Length() < 1) {
+        Nan::ThrowError("Wrong number of arguments");
+        return;
+    }
+
+    VPackBuilder builder;
+    if (TRI_V8ToVPack(info.GetIsolate(), builder, info[0], false) != TRI_ERROR_NO_ERROR) {
+        Nan::ThrowError("Failed transforming to vpack");
+        return;
+    }
+
+    auto buffer = builder.buffer();
+    info.GetReturnValue().Set(
+        Nan::CopyBuffer(
+            (char*)buffer->data(),
+            buffer->size()
+        ).ToLocalChecked()
+    );
+}
+
+
+
+NAN_MODULE_INIT(InitAll){
+    NAN_EXPORT(target, encode);
+    NAN_EXPORT(target, decode);
 }
 
 }}

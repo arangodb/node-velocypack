@@ -39,7 +39,7 @@ using VPBuffer = ::arangodb::velocypack::Buffer<uint8_t>;
 v8::Local<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
                                     VPackSlice const& slice,
                                     VPackOptions const* options,
-                                    VPackSlice const* base);
+                                    VPackSlice const* base = nullptr);
 
 template <bool performAllChecks, bool inObject>
 static int V8ToVPack(BuilderContext& context,
