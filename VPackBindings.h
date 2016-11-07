@@ -46,6 +46,10 @@ static int V8ToVPack(BuilderContext& context,
                      v8::Local<v8::Value> const parameter,
                      arangodb::StringRef const& attributeName);
 
+
+
+
+
 class VPackBuffer : public Nan::ObjectWrap {
  public:
 

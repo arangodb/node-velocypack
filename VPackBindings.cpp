@@ -83,7 +83,7 @@ static v8::Local<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
   v8::Local<v8::Object> object = v8::Object::New();
 
   if (object.IsEmpty()) {
-    return v8::Undefined(isolate);
+    return Nan::Undefined();
   }
 
 
@@ -155,7 +155,7 @@ static v8::Local<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
       v8::Array::New(static_cast<int>(slice.length()));
 
   if (object.IsEmpty()) {
-    return v8::Undefined(isolate);
+    return Nan::Undefined();
   }
 
   uint32_t j = 0;
@@ -185,17 +185,18 @@ v8::Local<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
                                     VPackSlice const* base) {
   switch (slice.type()) {
     case VPackValueType::Null: {
-      return v8::Null(isolate);
+      return Nan::Null();
     }
     case VPackValueType::Bool: {
-      return v8::Boolean::New(slice.getBool());
+      return Nan::New<v8::Boolean>(slice.getBool());
+      //return v8::Boolean::New(slice.getBool());
     }
     case VPackValueType::Double: {
       // convert NaN, +inf & -inf to null
       double value = slice.getDouble();
       if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL ||
           value == -HUGE_VAL) {
-        return v8::Null(isolate);
+        return Nan::Null();
       }
       return v8::Number::New(slice.getDouble());
     }
@@ -291,6 +292,7 @@ template <bool performAllChecks, bool inObject>
 static int V8ToVPack(BuilderContext& context,
                      v8::Local<v8::Value> const parameter,
                      arangodb::StringRef const& attributeName) {
+
   if (parameter->IsNull() || parameter->IsUndefined()) {
     AddValue<VPackValue, inObject>(context, attributeName,
                                    VPackValue(VPackValueType::Null));
@@ -410,7 +412,7 @@ static int V8ToVPack(BuilderContext& context,
 
     if (performAllChecks) {
       // first check if the object has a "toJSON" function
-      if (o->Has(context.toJsonKey)) {
+      if (o->Has(Nan::To<v8::String>(context.toJsonKey).ToLocalChecked())) {
         // call it if yes
         v8::Local<v8::Value> func = o->Get(context.toJsonKey);
         if (func->IsFunction()) {
@@ -491,11 +493,12 @@ static int V8ToVPack(BuilderContext& context,
 
 int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
                   v8::Local<v8::Value> const value, bool keepTopLevelOpen) {
-  v8::HandleScope scope(isolate);
+  Nan::HandleScope scope;
   BuilderContext context(isolate, builder, keepTopLevelOpen);
 
-  TRI_GET_GLOBAL_STRING(ToJsonKey);
-  context.toJsonKey = ToJsonKey;
+ // TRI_GET_GLOBAL_STRING(ToJsonKey);
+ // context.toJsonKey = ToJsonKey;
+  Nan::New("toJSON");
 
   return V8ToVPack<true, false>(context, value, arangodb::StringRef());
 }
