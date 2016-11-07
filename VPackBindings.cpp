@@ -492,31 +492,58 @@ static int V8ToVPack(BuilderContext& context,
 /// @brief convert a V8 value to VPack value
 ////////////////////////////////////////////////////////////////////////////////
 
+
+
+
+// node helper ////////////////////////////////////////////////////////////////////////////////
 int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
                   v8::Local<v8::Value> const value, bool keepTopLevelOpen) {
   Nan::HandleScope scope;
   BuilderContext context(isolate, builder, keepTopLevelOpen);
-
- // TRI_GET_GLOBAL_STRING(ToJsonKey);
- // context.toJsonKey = ToJsonKey;
-  Nan::New("toJSON");
-
+  context.toJsonKey = Nan::New("toJSON").ToLocalChecked();
   return V8ToVPack<true, false>(context, value, arangodb::StringRef());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a V8 value to VPack value, simplified version
-/// this function assumes that the V8 object does not contain any cycles and
-/// does not contain types such as Function, Date or RegExp
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_V8ToVPackSimple(v8::Isolate* isolate,
-                        arangodb::velocypack::Builder& builder,
-                        v8::Local<v8::Value> const value) {
-  // a HandleScope must have been created by the caller already
-  BuilderContext context(isolate, builder, false);
-  return V8ToVPack<false, false>(context, value, arangodb::StringRef());
+// node interface ////////////////////////////////////////////////////////////////////////////////
+NAN_METHOD(decode) {
+    if (info.Length() < 1) {
+        Nan::ThrowError("Wrong number of arguments");
+        return;
+    }
+    char* buf = ::node::Buffer::Data(info[0]);
+    VPackSlice slice(buf);
+    info.GetReturnValue().Set(TRI_VPackToV8(info.GetIsolate(), slice, &::arangodb::velocypack::Options::Defaults));
 }
+
+NAN_METHOD(encode) {
+    if (info.Length() < 1) {
+        Nan::ThrowError("Wrong number of arguments");
+        return;
+    }
+
+    VPackBuilder builder;
+    if (TRI_V8ToVPack(info.GetIsolate(), builder, info[0], false) != TRI_ERROR_NO_ERROR) {
+        Nan::ThrowError("Failed transforming to vpack");
+        return;
+    }
+
+    auto buffer = builder.buffer();
+    info.GetReturnValue().Set(
+        Nan::CopyBuffer(
+            (char*)buffer->data(),
+            buffer->size()
+        ).ToLocalChecked()
+    );
+}
+
+NAN_MODULE_INIT(Init){
+    NAN_EXPORT(target, encode);
+    NAN_EXPORT(target, decode);
+}
+
+}}
+
+NODE_MODULE(arango_velocypack_bindings, arangodb::node::Init);
 
 
 //NAN_METHOD(Collection::New) {
@@ -554,53 +581,18 @@ int TRI_V8ToVPackSimple(v8::Isolate* isolate,
 //  );
 //}
 
-
-NAN_METHOD(decode) {
-
-    // Check the number of arguments passed.
-    if (info.Length() < 1) {
-        // Throw an Error that is passed back to JavaScript
-        //info.GetIsolate()->ThrowException(Exception::TypeError(
-///
-  //                  String::NewFromUtf8(isolate, "Wrong number of arguments")));
-        return;
-    }
-
-    char* buf = ::node::Buffer::Data(info[0]);
-    VPackSlice slice(buf);
-    info.GetReturnValue().Set(TRI_VPackToV8(info.GetIsolate(), &velocypack::Options::Defaults,  slice));
-
-}
-
-NAN_METHOD(encode) {
-    // Check the number of arguments passed.
-    if (info.Length() < 1) {
-        Nan::ThrowError("Wrong number of arguments");
-        return;
-    }
-
-    VPackBuilder builder;
-    if (TRI_V8ToVPack(info.GetIsolate(), builder, info[0], false) != TRI_ERROR_NO_ERROR) {
-        Nan::ThrowError("Failed transforming to vpack");
-        return;
-    }
-
-    auto buffer = builder.buffer();
-    info.GetReturnValue().Set(
-        Nan::CopyBuffer(
-            (char*)buffer->data(),
-            buffer->size()
-        ).ToLocalChecked()
-    );
-}
+// ////////////////////////////////////////////////////////////////////////////////
+// /// @brief convert a V8 value to VPack value, simplified version
+// /// this function assumes that the V8 object does not contain any cycles and
+// /// does not contain types such as Function, Date or RegExp
+// ////////////////////////////////////////////////////////////////////////////////
+//
+// int TRI_V8ToVPackSimple(v8::Isolate* isolate,
+//                         arangodb::velocypack::Builder& builder,
+//                         v8::Local<v8::Value> const value) {
+//   // a HandleScope must have been created by the caller already
+//   BuilderContext context(isolate, builder, false);
+//   return V8ToVPack<false, false>(context, value, arangodb::StringRef());
+// }
 
 
-
-NAN_MODULE_INIT(InitAll){
-    NAN_EXPORT(target, encode);
-    NAN_EXPORT(target, decode);
-}
-
-}}
-
-NODE_MODULE(arango_velocypack_bindings, arangodb::node::InitAll);

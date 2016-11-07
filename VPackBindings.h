@@ -46,39 +46,35 @@ static int V8ToVPack(BuilderContext& context,
                      v8::Local<v8::Value> const parameter,
                      arangodb::StringRef const& attributeName);
 
-
-
-
-
-class VPackBuffer : public Nan::ObjectWrap {
- public:
-
-  static NAN_MODULE_INIT(Init) {
-    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
-    tpl->SetClassName(Nan::New("VPackBuffer").ToLocalChecked());
-    tpl->InstanceTemplate()->SetInternalFieldCount(1);
-    //Nan::SetPrototypeMethod(tpl, "create", Collection::create);
-    constructor().Reset(tpl->GetFunction());
-    target->Set( Nan::New("VPackBuffer").ToLocalChecked() , tpl->GetFunction());
-  }
-
-  static NAN_METHOD(New);
-  static NAN_METHOD(create);
-  VPBuffer& cppClass() {
-    return _cppBuffer;
-  }
- private:
-   VPBuffer _cppBuffer;
-
-   VPackBuffer()
-     : _cppBuffer()
-     {}
-
-  static Nan::Persistent<v8::Function>& constructor(){
-    static Nan::Persistent<v8::Function> ctor;
-    return ctor;
-  }
-
-};
-
 }}
+
+//class VPackBuffer : public Nan::ObjectWrap {
+// public:
+//
+//  static NAN_MODULE_INIT(Init) {
+//    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
+//    tpl->SetClassName(Nan::New("VPackBuffer").ToLocalChecked());
+//    tpl->InstanceTemplate()->SetInternalFieldCount(1);
+//    //Nan::SetPrototypeMethod(tpl, "create", Collection::create);
+//    constructor().Reset(tpl->GetFunction());
+//    target->Set( Nan::New("VPackBuffer").ToLocalChecked() , tpl->GetFunction());
+//  }
+//
+//  static NAN_METHOD(New);
+//  static NAN_METHOD(create);
+//  VPBuffer& cppClass() {
+//    return _cppBuffer;
+//  }
+// private:
+//   VPBuffer _cppBuffer;
+//
+//   VPackBuffer()
+//     : _cppBuffer()
+//     {}
+//
+//  static Nan::Persistent<v8::Function>& constructor(){
+//    static Nan::Persistent<v8::Function> ctor;
+//    return ctor;
+//  }
+//
+//};
