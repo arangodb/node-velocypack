@@ -120,7 +120,6 @@ static v8::Local<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
     }
 
     //check out of memory
-
     it.next();
   }
 
@@ -246,7 +245,6 @@ struct BuilderContext {
   int level;
   bool keepTopLevelOpen;
 };
-
 
 /// @brief adds a VPackValue to either an array or an object
 template <typename T, bool inObject>
