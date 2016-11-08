@@ -2,3 +2,4 @@
 -I./node_modules/nan
 -I./velocypack/include
 -I/usr/include/nodejs/src
+-I/usr/include/nodejs/deps/v8/include

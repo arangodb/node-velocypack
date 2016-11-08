@@ -23,9 +23,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Most code is taken from arangodb/lib/V8/v8-vpack.{cpp,h}
-
+#include <v8.h>
 #include <nan.h>
 
+#include <cmath>
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
@@ -36,14 +37,14 @@
 
 static int const MaxLevels = 64;
 
-#define TRI_V8_ASCII_PAIR_STRING(name, length) \
-  v8::String::New((name), (int)(length))
-
 #define TRI_V8_PAIR_STRING(name, length) \
-  v8::String::New((name), (int)(length))
+  Nan::New<v8::String>((name), (int)(length)).ToLocalChecked()
+
+#define TRI_V8_ASCII_PAIR_STRING(name, length) \
+  Nan::New<v8::String>((name), (int)(length)).ToLocalChecked()
 
 #define TRI_V8_STD_STRING(name) \
-  v8::String::New(name.c_str(), (int)name.length())
+  Nan::New<v8::String>(name.c_str(), (int)name.length()).ToLocalChecked()
 
 
 namespace arangodb { namespace node {
@@ -66,7 +67,7 @@ static v8::Local<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
                                                VPackSlice const* base) {
 
   assert(slice.isObject());
-  v8::Local<v8::Object> object = v8::Object::New();
+  v8::Local<v8::Object> object = Nan::New<v8::Object>();
 
   if (object.IsEmpty()) {
     return Nan::Undefined();
@@ -132,8 +133,7 @@ static inline v8::Local<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
                                               VPackOptions const* options,
                                               VPackSlice const* base) {
   assert(slice.isArray());
-  v8::Local<v8::Array> object =
-      v8::Array::New(static_cast<int>(slice.length()));
+  v8::Local<v8::Array> object = Nan::New<v8::Array>(static_cast<int>(slice.length()));
 
   if (object.IsEmpty()) {
     return Nan::Undefined();
@@ -176,32 +176,32 @@ v8::Local<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
           value == -HUGE_VAL) {
         return Nan::Null();
       }
-      return v8::Number::New(slice.getDouble());
+      return Nan::New<v8::Number>(slice.getDouble());
     }
     case VPackValueType::Int: {
       int64_t value = slice.getInt();
       if (value >= -2147483648LL && value <= 2147483647LL) {
         // value is within bounds of an int32_t
-        return v8::Integer::New(static_cast<int32_t>(value));
+        return Nan::New<v8::Integer>(static_cast<uint32_t>(value));
       }
       if (value >= 0 && value <= 4294967295LL) {
         // value is within bounds of a uint32_t
-        return v8::Integer::NewFromUnsigned(static_cast<uint32_t>(value));
+        return Nan::New<v8::Integer>(static_cast<uint32_t>(value));
       }
       // must use double to avoid truncation
-      return v8::Number::New(static_cast<double>(slice.getInt()));
+      return Nan::New<v8::Number>(static_cast<double>(slice.getInt()));
     }
     case VPackValueType::UInt: {
       uint64_t value = slice.getUInt();
       if (value <= 4294967295ULL) {
         // value is within bounds of a uint32_t
-        return v8::Integer::NewFromUnsigned(static_cast<uint32_t>(value));
+        return Nan::New<v8::Integer>(static_cast<uint32_t>(value));
       }
       // must use double to avoid truncation
-      return v8::Number::New(static_cast<double>(slice.getUInt()));
+      return Nan::New<v8::Number>(static_cast<double>(slice.getUInt()));
     }
     case VPackValueType::SmallInt: {
-      return v8::Integer::New(slice.getNumericValue<int32_t>());
+        return Nan::New<v8::Integer>(slice.getNumericValue<int32_t>());
     }
     case VPackValueType::String: {
       return ObjectVPackString(isolate, slice);
