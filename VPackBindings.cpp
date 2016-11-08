@@ -543,7 +543,7 @@ NAN_MODULE_INIT(Init){
 
 }}
 
-NODE_MODULE(arango_velocypack_bindings, arangodb::node::Init);
+NODE_MODULE(vpack, arangodb::node::Init);
 
 
 //NAN_METHOD(Collection::New) {

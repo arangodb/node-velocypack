@@ -1,5 +1,5 @@
 {
-  "name": "vpack_bindings",
+  "name": "velocypack",
   "version": "0.0.0",
   "description": "Node.js tests",
   "main": "getVer.js",
