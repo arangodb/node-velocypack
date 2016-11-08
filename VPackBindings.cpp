@@ -17,8 +17,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Jan Steeman
+/// @author Andreas Streichardt
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
+
+// Most code is taken from arangodb/lib/V8/v8-vpack.{cpp,h}
 
 #include <nan.h>
 
@@ -27,26 +31,13 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
-//#include <velocypack/velocypack-aliases.h>
 
 #include "VPackBindings.h"
 
-static uint8_t const AttributeBase = 0x30;
-static uint8_t const KeyAttribute = 0x31;
-static uint8_t const RevAttribute = 0x32;
-static uint8_t const IdAttribute = 0x33;
-static uint8_t const FromAttribute = 0x34;
-static uint8_t const ToAttribute = 0x35;
-
-static int const TRI_ERROR_NO_ERROR = 0;
-static int const TRI_ERROR_BAD_PARAMETER = 2;
-static int const TRI_ERROR_OUT_OF_MEMORY = 4;
-static int const TRI_ERROR_NOT_IMPLEMENTED = 8;
 static int const MaxLevels = 64;
 
 #define TRI_V8_ASCII_PAIR_STRING(name, length) \
   v8::String::New((name), (int)(length))
-  //v8::String::New((uint8_t const*)(name), (int)(length))
 
 #define TRI_V8_PAIR_STRING(name, length) \
   v8::String::New((name), (int)(length))
@@ -57,10 +48,7 @@ static int const MaxLevels = 64;
 
 namespace arangodb { namespace node {
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a VelocyValueType::String into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
 static inline v8::Local<v8::Value> ObjectVPackString(v8::Isolate* isolate,
                                                       VPackSlice const& slice) {
   ::arangodb::velocypack::ValueLength l;
@@ -71,10 +59,7 @@ static inline v8::Local<v8::Value> ObjectVPackString(v8::Isolate* isolate,
   return TRI_V8_PAIR_STRING(val, l);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a VelocyValueType::Object into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
 static v8::Local<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
                                                VPackSlice const& slice,
                                                VPackOptions const* options,
@@ -86,7 +71,6 @@ static v8::Local<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
   if (object.IsEmpty()) {
     return Nan::Undefined();
   }
-
 
   VPackObjectIterator it(slice, true);
   while (it.valid()) {
@@ -143,11 +127,8 @@ static v8::Local<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
   return object;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a VelocyValueType::Array into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Local<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
+static inline v8::Local<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
                                               VPackSlice const& slice,
                                               VPackOptions const* options,
                                               VPackSlice const* base) {
@@ -176,10 +157,7 @@ static v8::Local<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
   return object;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a VPack value into a V8 object
-////////////////////////////////////////////////////////////////////////////////
-
 v8::Local<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
                                     VPackSlice const& slice,
                                     VPackOptions const* options,
@@ -254,7 +232,6 @@ v8::Local<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
   }
 }
 
-
 struct BuilderContext {
   BuilderContext(v8::Isolate* isolate, VPackBuilder& builder,
                  bool keepTopLevelOpen)
@@ -270,10 +247,8 @@ struct BuilderContext {
   bool keepTopLevelOpen;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a VPackValue to either an array or an object
-////////////////////////////////////////////////////////////////////////////////
 
+/// @brief adds a VPackValue to either an array or an object
 template <typename T, bool inObject>
 static inline void AddValue(BuilderContext& context,
                             arangodb::StringRef const& attributeName,
@@ -285,12 +260,9 @@ static inline void AddValue(BuilderContext& context,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 value to a VPack value
-////////////////////////////////////////////////////////////////////////////////
-
 template <bool performAllChecks, bool inObject>
-static int V8ToVPack(BuilderContext& context,
+int V8ToVPack(BuilderContext& context,
                      v8::Local<v8::Value> const parameter,
                      arangodb::StringRef const& attributeName) {
 
@@ -488,13 +460,7 @@ static int V8ToVPack(BuilderContext& context,
   return TRI_ERROR_BAD_PARAMETER;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 value to VPack value
-////////////////////////////////////////////////////////////////////////////////
-
-
-
-
 // node helper ////////////////////////////////////////////////////////////////////////////////
 int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
                   v8::Local<v8::Value> const value, bool keepTopLevelOpen) {
@@ -544,55 +510,3 @@ NAN_MODULE_INIT(Init){
 }}
 
 NODE_MODULE(vpack, arangodb::node::Init);
-
-
-//NAN_METHOD(Collection::New) {
-//  if (info.IsConstructCall()) {
-//    if (info.Length() !=2 ) {
-//      Nan::ThrowTypeError("Not 2 Arguments");
-//    }
-//    if (info[0]->IsObject() && info[1]->IsString()){
-//      Collection* obj = new Collection(Nan::ObjectWrap::Unwrap<Database>(info[0]->ToObject())->cppClass() , *Nan::Utf8String(info[1]));
-//      obj->Wrap(info.This());
-//      info.GetReturnValue().Set(info.This());
-//    } else {
-//      Nan::ThrowTypeError("invalid parameters");
-//    }
-//  } else {
-//    int argc = info.Length();
-//    if (argc > 2) {
-//      argc = 2;
-//    }
-//    v8::Local<v8::Value> argv[2];
-//    for (int i = 0; i < argc; ++i) {
-//      argv[i] = info[i];
-//    }
-//    v8::Local<v8::Function> cons = Nan::New(constructor());
-//    info.GetReturnValue().Set(Nan::NewInstance(cons,argc,argv).ToLocalChecked());
-//  }
-//}
-//
-//NAN_METHOD(Collection::create) {
-//  if (info.Length() != 1 ) {
-//    Nan::ThrowTypeError("Not 1 Argument");
-//  }
-//  Nan::ObjectWrap::Unwrap<Collection>(info.Holder())->_cppCollection->create(
-//    Nan::ObjectWrap::Unwrap<Connection>(info[0]->ToObject())->cppClass()
-//  );
-//}
-
-// ////////////////////////////////////////////////////////////////////////////////
-// /// @brief convert a V8 value to VPack value, simplified version
-// /// this function assumes that the V8 object does not contain any cycles and
-// /// does not contain types such as Function, Date or RegExp
-// ////////////////////////////////////////////////////////////////////////////////
-//
-// int TRI_V8ToVPackSimple(v8::Isolate* isolate,
-//                         arangodb::velocypack::Builder& builder,
-//                         v8::Local<v8::Value> const value) {
-//   // a HandleScope must have been created by the caller already
-//   BuilderContext context(isolate, builder, false);
-//   return V8ToVPack<false, false>(context, value, arangodb::StringRef());
-// }
-
-

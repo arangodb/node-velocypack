@@ -33,48 +33,45 @@ namespace arangodb {
 
 namespace arangodb { namespace node {
 
+// types
 struct BuilderContext;
 using VPBuffer = ::arangodb::velocypack::Buffer<uint8_t>;
 
-v8::Local<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
-                                    VPackSlice const& slice,
-                                    VPackOptions const* options,
-                                    VPackSlice const* base = nullptr);
+// constants
+static uint8_t const AttributeBase = 0x30;
+static uint8_t const KeyAttribute = 0x31;
+static uint8_t const RevAttribute = 0x32;
+static uint8_t const IdAttribute = 0x33;
+static uint8_t const FromAttribute = 0x34;
+static uint8_t const ToAttribute = 0x35;
 
+static int const TRI_ERROR_NO_ERROR = 0;
+static int const TRI_ERROR_BAD_PARAMETER = 2;
+static int const TRI_ERROR_OUT_OF_MEMORY = 4;
+static int const TRI_ERROR_NOT_IMPLEMENTED = 8;
+
+//functions
+
+// decode to js object
+v8::Local<v8::Value>
+TRI_VPackToV8(v8::Isolate* isolate
+             ,VPackSlice const& slice
+             ,VPackOptions const* options
+             ,VPackSlice const* base = nullptr
+             );
+
+// encode to vpack
+int TRI_V8ToVPack(v8::Isolate* isolate
+             ,VPackBuilder& builder
+             ,v8::Local<v8::Value> const value
+             ,bool keepTopLevelOpen
+             );
+
+// this functions does most of the work (template!)
 template <bool performAllChecks, bool inObject>
-static int V8ToVPack(BuilderContext& context,
-                     v8::Local<v8::Value> const parameter,
-                     arangodb::StringRef const& attributeName);
+int V8ToVPack(BuilderContext& context
+             ,v8::Local<v8::Value> const parameter
+             ,arangodb::StringRef const& attributeName
+             );
 
 }}
-
-//class VPackBuffer : public Nan::ObjectWrap {
-// public:
-//
-//  static NAN_MODULE_INIT(Init) {
-//    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
-//    tpl->SetClassName(Nan::New("VPackBuffer").ToLocalChecked());
-//    tpl->InstanceTemplate()->SetInternalFieldCount(1);
-//    //Nan::SetPrototypeMethod(tpl, "create", Collection::create);
-//    constructor().Reset(tpl->GetFunction());
-//    target->Set( Nan::New("VPackBuffer").ToLocalChecked() , tpl->GetFunction());
-//  }
-//
-//  static NAN_METHOD(New);
-//  static NAN_METHOD(create);
-//  VPBuffer& cppClass() {
-//    return _cppBuffer;
-//  }
-// private:
-//   VPBuffer _cppBuffer;
-//
-//   VPackBuffer()
-//     : _cppBuffer()
-//     {}
-//
-//  static Nan::Persistent<v8::Function>& constructor(){
-//    static Nan::Persistent<v8::Function> ctor;
-//    return ctor;
-//  }
-//
-//};
