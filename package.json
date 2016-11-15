@@ -1,5 +1,5 @@
 {
-  "name": "velocypack",
+  "name": "node-velocypack",
   "version": "0.0.0",
   "description": "Node.js tests",
   "main": "getVer.js",
@@ -11,6 +11,7 @@
 
   },
   "scripts": {
+    "preinstall" : "git clone https://github.com/arangodb/velocypack.git || exit 0",
     "test": "node test.js",
     "install": "cmake-js compile -D"
   },

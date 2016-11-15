@@ -507,4 +507,4 @@ NAN_MODULE_INIT(Init){
 
 }}
 
-NODE_MODULE(vpack, arangodb::node::Init);
+NODE_MODULE(node_velocypack, arangodb::node::Init);

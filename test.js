@@ -1,4 +1,4 @@
-var vpack = require('bindings')('vpack');
+var vpack = require('bindings')('node-velocypack');
 
 var test_vpack_buffer = vpack.encode(
 { "dog": "arfarfarf"
