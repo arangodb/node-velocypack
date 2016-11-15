@@ -8,7 +8,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC") #curlpp has broken build system
 add_subdirectory(velocypack)
 
 add_library(node-velocypack SHARED
-    VackBindings.cpp
+    VPackBindings.cpp
 )
 
 # Gives our library file a .node extension without any "lib" prefix
