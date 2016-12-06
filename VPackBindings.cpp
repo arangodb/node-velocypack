@@ -500,7 +500,18 @@ NAN_METHOD(encode) {
     );
 }
 
+static std::unique_ptr<VPackAttributeTranslator> Translator;
+
 NAN_MODULE_INIT(Init){
+    auto& opts = ::arangodb::velocypack::Options::Defaults;
+    Translator.reset(new VPackAttributeTranslator);
+    Translator->add("_key",1);
+    Translator->add("_rev",2);
+    Translator->add("_id",3);
+    Translator->add("_from",4);
+    Translator->add("_to",5);
+    Translator->seal();
+    opts.attributeTranslator = Translator.get();
     NAN_EXPORT(target, encode);
     NAN_EXPORT(target, decode);
 }
