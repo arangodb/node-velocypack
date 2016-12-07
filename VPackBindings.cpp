@@ -29,9 +29,11 @@
 #include <cmath>
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "VPackBindings.h"
 
@@ -49,9 +51,44 @@ static int const MaxLevels = 64;
 
 namespace arangodb { namespace node {
 
+template <typename T>
+static inline T ReadNumber(uint8_t const* source, uint32_t length) {
+  T value = 0;
+  uint64_t x = 0;
+  uint8_t const* end = source + length;
+  do {
+    value += static_cast<T>(*source++) << x;
+    x += 8;
+  } while (source < end);
+  return value;
+}
+
+// a default custom type handler that prevents throwing exceptions when
+// custom types are encountered during Slice.toJson() and family
+struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
+  void dump(VPackSlice const& value, VPackDumper* dumper,
+            VPackSlice const& base) override {
+    dumper->appendString(stringify(value, base));
+  }
+  std::string toString(VPackSlice const& value, VPackOptions const* options,
+                       VPackSlice const& base) override {
+    return stringify(value, base);
+  }
+
+  std::string stringify(VPackSlice const& value, VPackSlice const& base) {
+    if (value.isCustom()) {
+      uint64_t cid = ReadNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
+      if (base.isObject() && base.get("_key").isString()) {
+        return std::to_string(cid) + "/" + base.get("_key").copyString();
+      }
+    }
+    return "cannot handle custom _id value";
+  }
+};
+
 /// @brief converts a VelocyValueType::String into a V8 object
 static inline v8::Local<v8::Value> ObjectVPackString(v8::Isolate* isolate,
-                                                      VPackSlice const& slice) {
+                                                     VPackSlice const& slice) {
   ::arangodb::velocypack::ValueLength l;
   char const* val = slice.getString(l);
   if (l == 0) {
@@ -501,8 +538,11 @@ NAN_METHOD(encode) {
 }
 
 static std::unique_ptr<VPackAttributeTranslator> Translator;
+static std::unique_ptr<VPackCustomTypeHandler> CustomTypeHandler;
+
 
 NAN_MODULE_INIT(Init){
+
     auto& opts = ::arangodb::velocypack::Options::Defaults;
     Translator.reset(new VPackAttributeTranslator);
     Translator->add("_key",1);
@@ -512,6 +552,10 @@ NAN_MODULE_INIT(Init){
     Translator->add("_to",5);
     Translator->seal();
     opts.attributeTranslator = Translator.get();
+    
+    CustomTypeHandler.reset(new DefaultCustomTypeHandler);
+    opts.customTypeHandler = CustomTypeHandler.get();
+
     NAN_EXPORT(target, encode);
     NAN_EXPORT(target, decode);
 }
