@@ -29,9 +29,11 @@
 #include <cmath>
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "VPackBindings.h"
 
@@ -49,9 +51,22 @@ static int const MaxLevels = 64;
 
 namespace arangodb { namespace node {
 
+// a default custom type handler that prevents throwing exceptions when
+// custom types are encountered during Slice.toJson() and family
+struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
+  void dump(VPackSlice const&, VPackDumper* dumper,
+            VPackSlice const&) override {
+    dumper->appendString("hello from CustomTypeHandler");
+  }
+  std::string toString(VPackSlice const&, VPackOptions const*,
+                       VPackSlice const&) override {
+    return "hello from CustomTypeHandler";
+  }
+};
+
 /// @brief converts a VelocyValueType::String into a V8 object
 static inline v8::Local<v8::Value> ObjectVPackString(v8::Isolate* isolate,
-                                                      VPackSlice const& slice) {
+                                                     VPackSlice const& slice) {
   ::arangodb::velocypack::ValueLength l;
   char const* val = slice.getString(l);
   if (l == 0) {
@@ -501,8 +516,11 @@ NAN_METHOD(encode) {
 }
 
 static std::unique_ptr<VPackAttributeTranslator> Translator;
+static std::unique_ptr<VPackCustomTypeHandler> CustomTypeHandler;
+
 
 NAN_MODULE_INIT(Init){
+
     auto& opts = ::arangodb::velocypack::Options::Defaults;
     Translator.reset(new VPackAttributeTranslator);
     Translator->add("_key",1);
@@ -512,6 +530,10 @@ NAN_MODULE_INIT(Init){
     Translator->add("_to",5);
     Translator->seal();
     opts.attributeTranslator = Translator.get();
+    
+    CustomTypeHandler.reset(new DefaultCustomTypeHandler);
+    opts.customTypeHandler = CustomTypeHandler.get();
+
     NAN_EXPORT(target, encode);
     NAN_EXPORT(target, decode);
 }
