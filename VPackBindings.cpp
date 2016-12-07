@@ -51,16 +51,38 @@ static int const MaxLevels = 64;
 
 namespace arangodb { namespace node {
 
+template <typename T>
+static inline T ReadNumber(uint8_t const* source, uint32_t length) {
+  T value = 0;
+  uint64_t x = 0;
+  uint8_t const* end = source + length;
+  do {
+    value += static_cast<T>(*source++) << x;
+    x += 8;
+  } while (source < end);
+  return value;
+}
+
 // a default custom type handler that prevents throwing exceptions when
 // custom types are encountered during Slice.toJson() and family
 struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
-  void dump(VPackSlice const&, VPackDumper* dumper,
-            VPackSlice const&) override {
-    dumper->appendString("hello from CustomTypeHandler");
+  void dump(VPackSlice const& value, VPackDumper* dumper,
+            VPackSlice const& base) override {
+    dumper->appendString(stringify(value, base));
   }
-  std::string toString(VPackSlice const&, VPackOptions const*,
-                       VPackSlice const&) override {
-    return "hello from CustomTypeHandler";
+  std::string toString(VPackSlice const& value, VPackOptions const* options,
+                       VPackSlice const& base) override {
+    return stringify(value, base);
+  }
+
+  std::string stringify(VPackSlice const& value, VPackSlice const& base) {
+    if (value.isCustom()) {
+      uint64_t cid = ReadNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
+      if (base.isObject() && base.get("_key").isString()) {
+        return std::to_string(cid) + "/" + base.get("_key").copyString();
+      }
+    }
+    return "cannot handle custom _id value";
   }
 };
 
