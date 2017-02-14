@@ -1,4 +1,4 @@
-var vpack = require('bindings')('node-velocypack');
+var vpack = require('./index.js');
 
 var documents = [
   { "dog": "arfarfarf"
