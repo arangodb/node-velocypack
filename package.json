@@ -1,8 +1,8 @@
 {
   "name": "node-velocypack",
   "version": "0.0.0",
-  "description": "Node.js tests",
-  "main": "getVer.js",
+  "description": "node VelocyPack de- and encoder",
+  "main": "index.js",
   "private": true,
   "dependencies": {
     "bindings": "~1.2.1",
