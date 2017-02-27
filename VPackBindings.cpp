@@ -507,25 +507,32 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
 
 // node interface ////////////////////////////////////////////////////////////////////////////////
 NAN_METHOD(decode) {
-    if (info.Length() < 1) {
-        Nan::ThrowError("Wrong number of arguments");
-        return;
-    }
+  if (info.Length() < 1) {
+      Nan::ThrowRangeError("node-velocypack - Error while decoding: no arguments given");
+  }
+  try {
     char* buf = ::node::Buffer::Data(info[0]);
     VPackSlice slice(buf);
     info.GetReturnValue().Set(TRI_VPackToV8(info.GetIsolate(), slice, &::arangodb::velocypack::Options::Defaults));
+  } catch (std::exception const& e){
+    std::string errorMessage = std::string("node-velocypack - Error while decoding: ") + e.what();
+    Nan::ThrowError(errorMessage.c_str());
+  } catch (...) {
+    std::string errorMessage = std::string("node-velocypack - Unknown error while decoding: ");
+    Nan::ThrowError(errorMessage.c_str());
+  }
 }
 
 NAN_METHOD(encode) {
-    if (info.Length() < 1) {
-        Nan::ThrowError("Wrong number of arguments");
-        return;
-    }
-
+  if (info.Length() < 1) {
+      Nan::ThrowRangeError("node-velocypack - Error while encoding: no arguments given");
+  }
+  try {
     VPackBuilder builder;
-    if (TRI_V8ToVPack(info.GetIsolate(), builder, info[0], false) != TRI_ERROR_NO_ERROR) {
-        Nan::ThrowError("Failed transforming to vpack");
-        return;
+    auto tri = TRI_V8ToVPack(info.GetIsolate(), builder, info[0], false);
+    if ( tri != TRI_ERROR_NO_ERROR) {
+        std::string errorMessage = std::string("node-velocypack - Error while encoding: TRI_ERROR(") + std::to_string(tri) + ")";
+        Nan::ThrowError(errorMessage.c_str());
     }
 
     auto buffer = builder.buffer();
@@ -535,6 +542,15 @@ NAN_METHOD(encode) {
             buffer->size()
         ).ToLocalChecked()
     );
+  } catch (std::exception const& e){
+    std::string errorMessage = std::string("node-velocypack - Error while encoding: ") + e.what();
+    Nan::ThrowError(errorMessage.c_str());
+  } catch (...) {
+    std::string errorMessage = std::string("node-velocypack - Unknown error while encoding");
+    Nan::ThrowError(errorMessage.c_str());
+  }
+
+
 }
 
 static std::unique_ptr<VPackAttributeTranslator> Translator;
@@ -552,7 +568,7 @@ NAN_MODULE_INIT(Init){
     Translator->add("_to",5);
     Translator->seal();
     opts.attributeTranslator = Translator.get();
-    
+
     CustomTypeHandler.reset(new DefaultCustomTypeHandler);
     opts.customTypeHandler = CustomTypeHandler.get();
 
