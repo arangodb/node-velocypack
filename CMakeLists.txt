@@ -3,7 +3,8 @@ project(node-velocypack)
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-lasan -fsanitize=address -fno-omit-frame-pointer")
+# disable to ease debugging (avoids fiddling with LD_PRELOAD)
+# set(CMAKE_CXX_FLAGS_DEBUG "-lasan -fsanitize=address -fno-omit-frame-pointer")
 
 option(BuildVelocyPackExamples "Build examples" OFF)
 
