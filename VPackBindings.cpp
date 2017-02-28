@@ -37,6 +37,8 @@
 
 #include "VPackBindings.h"
 
+#include <iostream>
+
 static int const MaxLevels = 64;
 
 #define TRI_V8_PAIR_STRING(name, length) \
@@ -99,6 +101,7 @@ static inline v8::Local<v8::Value> ObjectVPackString(v8::Isolate* isolate,
           v8::String::NewFromUtf8(isolate, e.what())
         )
     );
+   return Nan::Undefined();
   }
   if (l == 0) {
     return v8::String::Empty(isolate);
@@ -123,53 +126,17 @@ static v8::Local<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
     VPackObjectIterator it(slice, true);
     while (it.valid()) {
       ::arangodb::velocypack::ValueLength l;
-      VPackSlice k = it.key(false);
+      VPackSlice k = it.key();
 
-      if (k.isString()) {
-        // regular attribute
-        char const* p = k.getString(l);
-        object->ForceSet(TRI_V8_PAIR_STRING(p, l),
-                         TRI_VPackToV8(isolate, it.value(), options, &slice));
-      } else {
-        // optimized code path for translated system attributes
-        VPackSlice v = VPackSlice(k.begin() + 1);
-        v8::Local<v8::Value> sub;
-        if (v.isString()) {
-          char const* p = v.getString(l);
-          sub = TRI_V8_ASCII_PAIR_STRING(p, l);
-        } else {
-          sub = TRI_VPackToV8(isolate, v, options, &slice);
-        }
-
-        uint8_t which =
-            static_cast<uint8_t>(k.getUInt()) + AttributeBase;
-        switch (which) {
-          case KeyAttribute: {
-            object->ForceSet(Nan::New("_key").ToLocalChecked(), sub);
-            break;
-          }
-          case RevAttribute: {
-            object->ForceSet(Nan::New("_rev").ToLocalChecked(), sub);
-            break;
-          }
-          case IdAttribute: {
-            object->ForceSet(Nan::New("_id").ToLocalChecked(), sub);
-            break;
-          }
-          case FromAttribute: {
-            object->ForceSet(Nan::New("_from").ToLocalChecked(), sub);
-            break;
-          }
-          case ToAttribute: {
-            object->ForceSet(Nan::New("_to").ToLocalChecked(), sub);
-            break;
-          }
-        }
-      }
+      // regular attribute
+      char const* p = k.getString(l);
+      object->ForceSet(TRI_V8_PAIR_STRING(p, l),
+                       TRI_VPackToV8(isolate, it.value(), options, &slice));
 
       //check out of memory
       it.next();
     }
+    return object;
   } catch (std::exception const& e) {
     isolate->ThrowException(
         v8::Exception::Error(
@@ -186,8 +153,8 @@ static inline v8::Local<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
                                               VPackOptions const* options,
                                               VPackSlice const* base) {
   assert(slice.isArray());
-  v8::Local<v8::Array> object = Nan::New<v8::Array>(static_cast<int>(slice.length()));
 
+  v8::Local<v8::Array> object = Nan::New<v8::Array>(static_cast<int>(slice.length()));
   if (object.IsEmpty()) {
     return Nan::Undefined();
   }
@@ -202,10 +169,9 @@ static inline v8::Local<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
       if (!val.IsEmpty()) {
         object->Set(j++, val);
       }
-
-      //checl memory
       it.next();
     }
+    return object;
   } catch(std::exception const& e) {
     isolate->ThrowException(
         v8::Exception::Error(
@@ -213,7 +179,7 @@ static inline v8::Local<v8::Value> ObjectVPackArray(v8::Isolate* isolate,
         )
     );
   }
-  return object;
+  return Nan::New<v8::Array>(); // just to avoid a warning
 }
 
 /// @brief converts a VPack value into a V8 object
@@ -243,14 +209,14 @@ v8::Local<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
         int64_t value = slice.getInt();
         if (value >= -2147483648LL && value <= 2147483647LL) {
           // value is within bounds of an int32_t
-          return Nan::New<v8::Integer>(static_cast<uint32_t>(value));
+          return Nan::New<v8::Integer>(static_cast<int32_t>(value));
         }
         if (value >= 0 && value <= 4294967295LL) {
           // value is within bounds of a uint32_t
           return Nan::New<v8::Integer>(static_cast<uint32_t>(value));
         }
         // must use double to avoid truncation
-        return Nan::New<v8::Number>(static_cast<double>(slice.getInt()));
+        return Nan::New<v8::Number>(static_cast<double>(value));
       }
       case VPackValueType::UInt: {
         uint64_t value = slice.getUInt();
@@ -259,7 +225,7 @@ v8::Local<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
           return Nan::New<v8::Integer>(static_cast<uint32_t>(value));
         }
         // must use double to avoid truncation
-        return Nan::New<v8::Number>(static_cast<double>(slice.getUInt()));
+        return Nan::New<v8::Number>(static_cast<double>(value));
       }
       case VPackValueType::SmallInt: {
           return Nan::New<v8::Integer>(slice.getNumericValue<int32_t>());
@@ -530,6 +496,7 @@ int V8ToVPack(BuilderContext& context,
   } catch (std::exception const& e) {
     std::string errorMessage = e.what();
     Nan::ThrowError(errorMessage.c_str());
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
   Nan::ThrowError("bad parameter");
@@ -560,9 +527,16 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
 NAN_METHOD(decode) {
   if (info.Length() < 1) {
       Nan::ThrowRangeError("node-velocypack - Error while decoding: no arguments given");
+      return;
   }
   try {
     char* buf = ::node::Buffer::Data(info[0]);
+    if (buf == nullptr){ //return undefined?
+      std::string errorMessage = std::string("node-velocypack - Error while decoding: given buffer is NULL");
+      Nan::ThrowError(errorMessage.c_str());
+      return;
+    }
+    std::cout << "####" << std::string(buf, ::node::Buffer::Length(info[0])) << "###" << std::endl;
     VPackSlice slice(buf);
     info.GetReturnValue().Set(TRI_VPackToV8(info.GetIsolate(), slice, &::arangodb::velocypack::Options::Defaults));
   } catch (std::exception const& e){
@@ -577,6 +551,7 @@ NAN_METHOD(decode) {
 NAN_METHOD(encode) {
   if (info.Length() < 1) {
       Nan::ThrowRangeError("node-velocypack - Error while encoding: no arguments given");
+      return;
   }
   try {
     VPackBuilder builder;
@@ -584,13 +559,14 @@ NAN_METHOD(encode) {
     if ( tri != TRI_ERROR_NO_ERROR) {
         std::string errorMessage = std::string("node-velocypack - Error while encoding: TRI_ERROR(") + std::to_string(tri) + ")";
         Nan::ThrowError(errorMessage.c_str());
+        return;
     }
 
+    auto l = builder.slice().byteSize();
     auto buffer = builder.buffer();
     info.GetReturnValue().Set(
         Nan::CopyBuffer(
-            (char*)buffer->data(),
-            buffer->size()
+            (char*)buffer->data(),l
         ).ToLocalChecked()
     );
   } catch (std::exception const& e){
@@ -600,8 +576,6 @@ NAN_METHOD(encode) {
     std::string errorMessage = std::string("node-velocypack - Unknown error while encoding");
     Nan::ThrowError(errorMessage.c_str());
   }
-
-
 }
 
 static std::unique_ptr<VPackAttributeTranslator> Translator;
