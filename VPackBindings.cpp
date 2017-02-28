@@ -91,22 +91,22 @@ struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
 /// @brief converts a VelocyValueType::String into a V8 object
 static inline v8::Local<v8::Value> ObjectVPackString(v8::Isolate* isolate,
                                                      VPackSlice const& slice) {
-  ::arangodb::velocypack::ValueLength l;
-  char const* val = nullptr;
   try {
+    ::arangodb::velocypack::ValueLength l;
+    char const* val = nullptr;
     val = slice.getString(l);
+    if (l == 0) {
+      return v8::String::Empty(isolate);
+    }
+    return TRI_V8_PAIR_STRING(val, l);
   } catch(std::exception const& e) {
     isolate->ThrowException(
         v8::Exception::Error(
           v8::String::NewFromUtf8(isolate, e.what())
         )
     );
-   return Nan::Undefined();
+    return Nan::Undefined();
   }
-  if (l == 0) {
-    return v8::String::Empty(isolate);
-  }
-  return TRI_V8_PAIR_STRING(val, l);
 }
 
 /// @brief converts a VelocyValueType::Object into a V8 object
