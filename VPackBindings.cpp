@@ -525,6 +525,7 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
 
 // node interface ////////////////////////////////////////////////////////////////////////////////
 NAN_METHOD(decode) {
+  //std::cout << "node-velocypack decode - ";
   if (info.Length() < 1) {
       Nan::ThrowRangeError("node-velocypack - Error while decoding: no arguments given");
       return;
@@ -536,8 +537,8 @@ NAN_METHOD(decode) {
       Nan::ThrowError(errorMessage.c_str());
       return;
     }
-    std::cout << "####" << std::string(buf, ::node::Buffer::Length(info[0])) << "###" << std::endl;
     VPackSlice slice(buf);
+    //std::cout << "####" << slice.toJson() << "###" << std::endl;
     info.GetReturnValue().Set(TRI_VPackToV8(info.GetIsolate(), slice, &::arangodb::velocypack::Options::Defaults));
   } catch (std::exception const& e){
     std::string errorMessage = std::string("node-velocypack - Error while decoding: ") + e.what();
@@ -549,10 +550,17 @@ NAN_METHOD(decode) {
 }
 
 NAN_METHOD(encode) {
+  //std::cout << "node-velocypack encode";
   if (info.Length() < 1) {
       Nan::ThrowRangeError("node-velocypack - Error while encoding: no arguments given");
       return;
   }
+
+  if (!info[0]->IsObject()) {
+      Nan::ThrowRangeError("node-velocypack - Error while encoding: no arguments given");
+      return;
+  }
+
   try {
     VPackBuilder builder;
     auto tri = TRI_V8ToVPack(info.GetIsolate(), builder, info[0], false);

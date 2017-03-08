@@ -12,7 +12,7 @@
   "scripts": {
     "preinstall" : "git clone https://github.com/arangodb/velocypack.git || exit 0",
     "test": "node test.js",
-    "install": "cmake-js compile --debug",
+    "install": "cmake-js compile",
     "install-debug": "cmake-js compile --debug"
   },
   "gypfile": true
