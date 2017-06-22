@@ -1,3 +1,4 @@
 build
+velocypack
 node_modules
 npm-debug.log
