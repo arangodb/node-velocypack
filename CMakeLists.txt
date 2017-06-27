@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 14)
 # set(CMAKE_CXX_FLAGS_DEBUG "-lasan -fsanitize=address -fno-omit-frame-pointer")
 
 option(BuildVelocyPackExamples "Build examples" OFF)
+option(BuildTools "Build support programs and tools" OFF)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC") #curlpp has broken build system
 add_subdirectory(velocypack)
