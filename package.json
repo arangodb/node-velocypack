@@ -10,10 +10,11 @@
     "nan": "^2.5.1"
   },
   "scripts": {
-    "preinstall" : "git clone https://github.com/arangodb/velocypack.git || exit 0",
+    "preinstall": "git clone https://github.com/arangodb/velocypack.git || exit 0",
     "test": "node test.js",
     "install": "cmake-js compile",
-    "install-debug": "cmake-js compile --debug"
+    "install-debug": "cmake-js compile --debug",
+    "clean": "rm -Rf build node_modules velocypack"
   },
   "gypfile": true
 }
